@@ -1,0 +1,931 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory Management System</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+<style>
+:root{--bg:#f5f5f5;--panel:#fff;--ink:#222;--muted:#666;--line:#d9d9d9;--brand:#2563a8;--brand-ink:#fff;--head:#eee;--bad:#b3261e;--ok:#1e7a3c;--warn:#8a5a00}
+@media(prefers-color-scheme:dark){:root{--bg:#171717;--panel:#222;--ink:#eee;--muted:#aaa;--line:#3a3a3a;--brand:#6ea8ee;--brand-ink:#111;--head:#2b2b2b;--bad:#ff8f86;--ok:#6fd392;--warn:#f5c451}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Arial,Helvetica,sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line)}
+.bar{max-width:1100px;margin:auto;padding:0 20px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.brand{font-size:1.1rem;padding:14px 0}
+nav button{border:0;background:none;padding:16px 4px;margin-right:14px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}
+nav button[aria-selected=true]{color:var(--ink);font-weight:700;border-color:var(--brand)}
+main{max-width:1100px;margin:auto;padding:24px 20px 60px}
+.view{display:none}
+.view.on{display:block}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.head h2{margin:0;font-size:1.4rem}
+.head p{margin:2px 0 0;color:var(--muted)}
+.btns{display:flex;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat,.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 16px}
+.stat span{color:var(--muted);font-size:.85rem}
+.stat b{display:block;font-size:1.5rem}
+.stat.bad b{color:var(--bad)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:12px}
+.card h3{margin:0 0 10px;font-size:1rem}
+.row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.row:last-child{border:0}
+.row .t{flex:1;min-width:0}
+.row .t div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row small{color:var(--muted)}
+.meter{width:90px;height:8px;background:var(--head);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--brand)}
+.btn{font:inherit;padding:8px 14px;border:1px solid var(--brand);border-radius:4px;background:var(--brand);color:var(--brand-ink);cursor:pointer}
+.btn.ghost{background:var(--panel);color:var(--ink);border-color:var(--line)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.sm{font:inherit;font-size:.85rem;padding:3px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}
+.sm.del{color:var(--bad)}
+.sm:hover{background:var(--head)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);min-width:0}
+.tools input{flex:1 1 240px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:inherit;border:0;background:var(--panel);color:var(--muted);padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--brand);color:var(--brand-ink)}
+.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+table{width:100%;border-collapse:collapse;min-width:680px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{background:var(--head);font-size:.85rem}
+tr:last-child td{border:0}
+td small{display:block;color:var(--muted)}
+.pill{display:inline-block;padding:0 8px;border:1px solid currentColor;border-radius:3px;font-size:.8rem;white-space:nowrap;background:transparent}
+.pill.ok{color:var(--ok)}
+.pill.bad{color:var(--bad)}
+.pill.warn{color:var(--warn)}
+.qty{display:flex;align-items:center;gap:10px}
+.qty b{min-width:34px}
+.acts2{display:flex;gap:6px}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+dialog{border:1px solid var(--line);border-radius:6px;padding:0;width:min(460px,92vw);background:var(--panel);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog form{padding:20px}
+dialog h3{margin:0 0 4px}
+dialog p{margin:0 0 12px;color:var(--muted);font-size:.9rem}
+label{display:block;font-size:.85rem;font-weight:700;margin:10px 0 4px}
+label+input,label+select{width:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#toast{position:fixed;right:16px;bottom:16px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:4px;opacity:0;pointer-events:none;z-index:99;max-width:80vw}
+#toast.on{opacity:1}
+@media(max-width:700px){main{padding:16px 12px 50px}}
+</style>
+</head>
+
+<body>
+<header>
+<div class="bar">
+<b class="brand">Inventory System</b>
+<nav id="nav"></nav>
+</div>
+</header>
+
+<main id="app">
+<p style="color:var(--muted)">Loading database...</p>
+</main>
+
+<div id="toast" role="status"></div>
+
+<template id="tpl">
+
+<section class="view on" id="dash">
+<div class="head">
+<div>
+<h2>Dashboard</h2>
+<p id="heroSub"></p>
+</div>
+<div class="btns">
+<button class="btn" data-open="dMove">Stock in / out</button>
+<button class="btn ghost" data-open="dProd">Add product</button>
+</div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="cols">
+<div class="card">
+<h3>Needs restocking</h3>
+<div id="lowList"></div>
+</div>
+
+<div class="card">
+<h3>Stock value by category</h3>
+<div id="catList"></div>
+</div>
+</div>
+
+<div class="card">
+<h3>Recent movements</h3>
+<div id="recent"></div>
+</div>
+</section>
+
+<section class="view" id="products">
+<div class="head">
+<div>
+<h2>Products</h2>
+<p>Everything you keep in stock.</p>
+</div>
+<button class="btn" data-open="dProd">Add product</button>
+</div>
+
+<div class="tools">
+<input id="pSearch" type="search" placeholder="Search by name, SKU or category" aria-label="Search products">
+<select id="pFilter" aria-label="Category"></select>
+</div>
+
+<div class="wrap">
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Category</th>
+<th>Price</th>
+<th>Stock</th>
+<th>Value</th>
+<th></th>
+</tr>
+</thead>
+<tbody id="prodRows"></tbody>
+</table>
+</div>
+</section>
+
+<section class="view" id="moves">
+<div class="head">
+<div>
+<h2>Movements</h2>
+<p>History of every stock in and stock out.</p>
+</div>
+<button class="btn" data-open="dMove">Stock in / out</button>
+</div>
+
+<div class="tools">
+<div class="seg" id="seg">
+<button data-mf="all" aria-pressed="true">All</button>
+<button data-mf="in" aria-pressed="false">Stock in</button>
+<button data-mf="out" aria-pressed="false">Stock out</button>
+</div>
+</div>
+
+<div class="wrap">
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Product</th>
+<th>Type</th>
+<th>Quantity</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody id="moveRows"></tbody>
+</table>
+</div>
+</section>
+
+<dialog id="dProd">
+<form id="prodForm">
+<h3>Add product</h3>
+<p>Create a new item in your inventory.</p>
+
+<label for="pName">Product name</label>
+<input id="pName" required>
+
+<div class="two">
+<div>
+<label for="pSku">SKU</label>
+<input id="pSku" placeholder="SKU-011" required>
+</div>
+<div>
+<label for="pCat">Category</label>
+<input id="pCat" list="cats" required>
+<datalist id="cats"></datalist>
+</div>
+</div>
+
+<div class="two">
+<div>
+<label for="pPrice">Price (₱)</label>
+<input id="pPrice" type="number" min="0" step="0.01" value="0" required>
+</div>
+<div>
+<label for="pQty">Opening stock</label>
+<input id="pQty" type="number" min="0" value="0" required>
+</div>
+</div>
+
+<label for="pReorder">Reorder level</label>
+<input id="pReorder" type="number" min="0" value="10" required>
+
+<div class="acts">
+<button type="button" class="btn ghost" data-close>Cancel</button>
+<button class="btn">Save product</button>
+</div>
+</form>
+</dialog>
+
+<dialog id="dMove">
+<form id="moveForm">
+<h3>Stock in / out</h3>
+<p>Record items received or sold.</p>
+
+<label for="mProd">Product</label>
+<select id="mProd" required></select>
+
+<div class="two">
+<div>
+<label for="mType">Type</label>
+<select id="mType">
+<option value="in">Stock in (received)</option>
+<option value="out">Stock out (sold or used)</option>
+</select>
+</div>
+<div>
+<label for="mQty">Quantity</label>
+<input id="mQty" type="number" min="1" value="1" required>
+</div>
+</div>
+
+<label for="mNote">Note (optional)</label>
+<input id="mNote" placeholder="Supplier delivery, sale, damaged...">
+
+<div class="acts">
+<button type="button" class="btn ghost" data-close>Cancel</button>
+<button class="btn">Save</button>
+</div>
+</form>
+</dialog>
+
+<dialog id="dConfirm">
+<form method="dialog">
+<h3>Are you sure?</h3>
+<p id="cText"></p>
+<div class="acts">
+<button class="btn ghost" value="no">Cancel</button>
+<button class="btn danger" value="yes">Confirm</button>
+</div>
+</form>
+</dialog>
+
+</template>
+
+<script>
+
+// ===== SUPABASE DETAILS =====
+const SUPABASE_URL = "https://wscwepqhozbqgoznxfjl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_wup8WLOC5nDOK6Xko_p2KA_w2RIc2Fm";
+// ============================
+
+const $ = id => document.getElementById(id);
+
+const esc = s =>
+String(s ?? "").replace(/[&<>"']/g, c => ({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#39;"
+}[c]));
+
+const money = n =>
+"₱" + Number(n || 0).toLocaleString(undefined, {
+maximumFractionDigits:2
+});
+
+const when = s =>
+new Date(s).toLocaleString(undefined,{
+month:"short",
+day:"numeric",
+hour:"numeric",
+minute:"2-digit"
+});
+
+const ICONS = {
+dash:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
+products:'<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',
+moves:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>'
+};
+
+const NAV = [
+["dash","Dashboard"],
+["products","Products"],
+["moves","Movements"]
+];
+
+let sb;
+let D = {products:[],moves:[]};
+let mf = "all";
+let pending = null;
+let tt;
+
+const stat = p =>
+p.quantity <= 0
+? ["Out of stock","bad"]
+: p.quantity <= p.reorder_level
+? ["Low stock","warn"]
+: ["In stock","ok"];
+
+function toast(m){
+const t = $("toast");
+t.textContent = m;
+t.classList.add("on");
+clearTimeout(tt);
+tt = setTimeout(()=>t.classList.remove("on"),2800);
+}
+
+function ask(text,fn){
+$("cText").textContent = text;
+pending = fn;
+$("dConfirm").showModal();
+}
+
+// ===== LOAD DATABASE =====
+
+async function load(first=false){
+
+try{
+
+const [p,m] = await Promise.all([
+
+sb.from("products")
+.select("*")
+.order("name"),
+
+sb.from("movements")
+.select("*")
+.order("created_at",{ascending:false})
+.limit(300)
+
+]);
+
+if(p.error || m.error){
+
+const err = p.error || m.error;
+
+console.error("Supabase database error:",err);
+
+if(first){
+
+$("app").innerHTML = `
+<div class="card">
+<h3>Database connection error</h3>
+<p>${esc(err.message)}</p>
+<p>Error code: ${esc(err.code || "Unknown")}</p>
+<p>Check your Supabase tables, RLS policies, and Data API settings.</p>
+</div>`;
+
+}else{
+
+toast(err.message);
+
+}
+
+return false;
+
+}
+
+D = {
+products:p.data || [],
+moves:m.data || []
+};
+
+render();
+
+return true;
+
+}catch(error){
+
+console.error(error);
+
+if(first){
+
+$("app").innerHTML = `
+<div class="card">
+<h3>Connection failed</h3>
+<p>${esc(error.message)}</p>
+</div>`;
+
+}else{
+
+toast("Unable to connect to the database.");
+
+}
+
+return false;
+
+}
+
+}
+
+// ===== DATABASE ACTION =====
+
+async function act(promise,ok){
+
+const {error} = await promise;
+
+if(error){
+
+console.error(error);
+toast(error.message);
+
+return false;
+
+}
+
+await load();
+
+if(ok) toast(ok);
+
+return true;
+
+}
+
+// ===== RENDER SYSTEM =====
+
+function render(){
+
+const P = D.products;
+
+const pm = Object.fromEntries(
+P.map(p=>[p.id,p])
+);
+
+const units = P.reduce(
+(n,p)=>n + Number(p.quantity),0
+);
+
+const value = P.reduce(
+(n,p)=>n + Number(p.quantity)*Number(p.price),0
+);
+
+const out = P.filter(p=>p.quantity<=0);
+
+const low = P.filter(
+p=>p.quantity>0 && p.quantity<=p.reorder_level
+);
+
+// DASHBOARD STATISTICS
+
+$("stats").innerHTML = [
+[P.length,"Products"],
+[units,"Units in stock"],
+[money(value),"Stock value"],
+[low.length,"Low stock"],
+[out.length,"Out of stock","bad"]
+].map(([n,l,c])=>`
+<div class="stat ${c || ""}">
+<span>${l}</span>
+<b>${n}</b>
+</div>
+`).join("");
+
+const need = low.length + out.length;
+
+$("heroSub").textContent = need
+? `${need} ${need===1?"item needs":"items need"} restocking. Total stock is worth ${money(value)}.`
+: `All items are well stocked. Total stock is worth ${money(value)}.`;
+
+// LOW STOCK
+
+const list = [
+...out,
+...low.sort((a,b)=>a.quantity-b.quantity)
+].slice(0,6);
+
+$("lowList").innerHTML = list.length
+? list.map(p=>{
+const s = stat(p);
+
+return `
+<div class="row">
+<div class="t">
+<div>${esc(p.name)}</div>
+<small>${esc(p.sku)} · reorder at ${p.reorder_level}</small>
+</div>
+<span class="pill ${s[1]}">${p.quantity} left</span>
+</div>`;
+
+}).join("")
+: `<div class="empty">Nothing to restock.</div>`;
+
+// CATEGORY VALUE
+
+const cat = {};
+
+P.forEach(p=>{
+cat[p.category] =
+(cat[p.category] || 0) +
+Number(p.quantity)*Number(p.price);
+});
+
+const ce = Object.entries(cat)
+.sort((a,b)=>b[1]-a[1])
+.slice(0,6);
+
+const mx = Math.max(1,...ce.map(c=>c[1]));
+
+$("catList").innerHTML = ce.length
+? ce.map(([c,v])=>`
+<div class="row">
+<div class="t"><div>${esc(c)}</div></div>
+<div class="meter">
+<i style="width:${v/mx*100}%"></i>
+</div>
+<b>${money(v)}</b>
+</div>
+`).join("")
+: `<div class="empty">No products yet.</div>`;
+
+// RECENT MOVEMENTS
+
+const mrow = m=>`
+<div class="row">
+<span class="pill ${m.type==="in"?"ok":"warn"}">
+${m.type==="in"?"+":"-"}${m.qty}
+</span>
+<div class="t">
+<div>${esc(pm[m.product_id]?.name || "Unknown product")}</div>
+<small>${esc(m.note || (m.type==="in"?"Stock in":"Stock out"))}</small>
+</div>
+<small>${when(m.created_at)}</small>
+</div>`;
+
+$("recent").innerHTML = D.moves.length
+? D.moves.slice(0,6).map(mrow).join("")
+: `<div class="empty">No movements yet.</div>`;
+
+// CATEGORY FILTER
+
+const cats = [...new Set(P.map(p=>p.category))].sort();
+
+const cur = $("pFilter").value;
+
+$("cats").innerHTML = cats.map(c=>
+`<option value="${esc(c)}">`
+).join("");
+
+$("pFilter").innerHTML =
+`<option value="">All categories</option>`+
+cats.map(c=>
+`<option value="${esc(c)}" ${c===cur?"selected":""}>${esc(c)}</option>`
+).join("");
+
+// PRODUCT SEARCH
+
+const f = $("pFilter").value;
+const q = $("pSearch").value.toLowerCase();
+
+const rows = P.filter(p=>
+(`${p.name} ${p.sku} ${p.category}`)
+.toLowerCase()
+.includes(q) &&
+(!f || p.category===f)
+);
+
+$("prodRows").innerHTML = rows.length
+? rows.map(p=>{
+
+const s = stat(p);
+
+return `
+<tr>
+<td>
+<b>${esc(p.name)}</b>
+<small>${esc(p.sku)}</small>
+</td>
+<td>${esc(p.category)}</td>
+<td>${money(p.price)}</td>
+<td>
+<div class="qty">
+<b>${p.quantity}</b>
+<span class="pill ${s[1]}">${s[0]}</span>
+</div>
+</td>
+<td>${money(p.quantity*Number(p.price))}</td>
+<td>
+<div class="acts2">
+<button class="sm" data-adjust="${p.id}">Stock in/out</button>
+<button class="sm del" data-del="${p.id}">Delete</button>
+</div>
+</td>
+</tr>`;
+
+}).join("")
+: `<tr><td colspan="6" class="empty">No products match your search.</td></tr>`;
+
+// STOCK MOVEMENT PRODUCT SELECT
+
+const sel = $("mProd").value;
+
+$("mProd").innerHTML = P.length
+? P.map(p=>
+`<option value="${p.id}">${esc(p.name)} (${p.quantity} in stock)</option>`
+).join("")
+: `<option value="">Add a product first</option>`;
+
+if(sel) $("mProd").value = sel;
+
+// MOVEMENT HISTORY
+
+const mv = D.moves.filter(m=>
+mf==="all" || m.type===mf
+);
+
+$("moveRows").innerHTML = mv.length
+? mv.map(m=>`
+<tr>
+<td>${when(m.created_at)}</td>
+<td><b>${esc(pm[m.product_id]?.name || "Unknown product")}</b></td>
+<td>
+<span class="pill ${m.type==="in"?"ok":"warn"}">
+${m.type==="in"?"Stock in":"Stock out"}
+</span>
+</td>
+<td>${m.type==="in"?"+":"-"}${m.qty}</td>
+<td>${esc(m.note || "-")}</td>
+</tr>
+`).join("")
+: `<tr><td colspan="5" class="empty">No movements in this view.</td></tr>`;
+
+}
+
+// ===== EVENT HANDLERS =====
+
+function wire(){
+
+// NAVIGATION
+
+$("nav").innerHTML = NAV.map(([id,l],i)=>`
+<button data-view="${id}" aria-selected="${i===0}">
+${l}
+</button>
+`).join("");
+
+$("nav").onclick = e=>{
+
+const b = e.target.closest("button");
+
+if(!b) return;
+
+document.querySelectorAll("#nav button")
+.forEach(x=>
+x.setAttribute("aria-selected",x===b)
+);
+
+document.querySelectorAll(".view")
+.forEach(v=>
+v.classList.toggle("on",v.id===b.dataset.view)
+);
+
+};
+
+// ADD PRODUCT
+
+$("prodForm").onsubmit = async e=>{
+
+e.preventDefault();
+
+const qty = Number($("pQty").value);
+const price = Number($("pPrice").value);
+const reorder = Number($("pReorder").value);
+
+if(price<0 || qty<0 || reorder<0){
+return toast("Values cannot be negative.");
+}
+
+const {data,error} = await sb
+.from("products")
+.insert({
+sku:$("pSku").value.trim(),
+name:$("pName").value.trim(),
+category:$("pCat").value.trim(),
+price:price,
+reorder_level:reorder
+})
+.select()
+.single();
+
+if(error){
+
+console.error(error);
+return toast(error.message);
+
+}
+
+// RECORD OPENING STOCK
+
+if(qty>0){
+
+const result = await sb.rpc("move_stock",{
+p_product:data.id,
+p_type:"in",
+p_qty:qty,
+p_note:"Opening stock"
+});
+
+if(result.error){
+
+console.error(result.error);
+
+await load();
+
+return toast(
+"Product saved, but opening stock failed: "+
+result.error.message
+);
+
+}
+
+}
+
+await load();
+
+toast("Product successfully added!");
+
+e.target.reset();
+$("dProd").close();
+
+};
+
+// STOCK IN / OUT
+
+$("moveForm").onsubmit = async e=>{
+
+e.preventDefault();
+
+const id = Number($("mProd").value);
+const qty = Number($("mQty").value);
+const type = $("mType").value;
+
+if(!id) return toast("Choose a product.");
+
+if(!Number.isInteger(qty) || qty<1){
+return toast("Enter a valid quantity.");
+}
+
+const success = await act(
+sb.rpc("move_stock",{
+p_product:id,
+p_type:type,
+p_qty:qty,
+p_note:$("mNote").value.trim()
+}),
+"Stock updated."
+);
+
+if(success){
+
+e.target.reset();
+$("dMove").close();
+
+}
+
+};
+
+// SEARCH AND FILTER
+
+["pSearch","pFilter"].forEach(id=>{
+$(id).oninput = render;
+});
+
+// MOVEMENT FILTER
+
+$("seg").onclick = e=>{
+
+const b = e.target.closest("button");
+
+if(!b) return;
+
+mf = b.dataset.mf;
+
+document.querySelectorAll("#seg button")
+.forEach(x=>
+x.setAttribute("aria-pressed",x===b)
+);
+
+render();
+
+};
+
+// BUTTON ACTIONS
+
+document.body.addEventListener("click",e=>{
+
+const t = e.target.closest("button");
+
+if(!t) return;
+
+const d = t.dataset;
+
+if(d.open){
+$(d.open).showModal();
+}
+
+if("close" in d){
+t.closest("dialog").close();
+}
+
+if(d.adjust){
+
+$("mProd").value = d.adjust;
+$("dMove").showModal();
+
+}
+
+if(d.del){
+
+ask(
+"This product and its stock history will be removed.",
+()=>act(
+sb.from("products").delete().eq("id",d.del),
+"Product deleted."
+)
+);
+
+}
+
+});
+
+// DELETE CONFIRMATION
+
+$("dConfirm").onclose = ()=>{
+
+const fn = pending;
+
+pending = null;
+
+if($("dConfirm").returnValue==="yes" && fn){
+fn();
+}
+
+};
+
+// REFRESH WHEN RETURNING TO WEBSITE
+
+document.addEventListener("visibilitychange",()=>{
+if(!document.hidden) load();
+});
+
+}
+
+// ===== INITIALIZE SUPABASE =====
+
+async function init(){
+
+if(!window.supabase){
+
+$("app").innerHTML = `
+<div class="card">
+<h3>Supabase library not loaded</h3>
+<p>Check your internet connection and Supabase JavaScript CDN.</p>
+</div>`;
+
+return;
+
+}
+
+try{
+
+sb = window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+$("app").innerHTML = "";
+
+$("app").appendChild(
+$("tpl").content.cloneNode(true)
+);
+
+wire();
+
+await load(true);
+
+}catch(error){
+
+console.error(error);
+
+$("app").innerHTML = `
+<div class="card">
+<h3>System initialization failed</h3>
+<p>${esc(error.message)}</p>
+</div>`;
+
+}
+
+}
+
+init();
+
+</script>
+</body>
+</html>
