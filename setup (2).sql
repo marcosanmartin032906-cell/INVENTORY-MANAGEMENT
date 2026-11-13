@@ -1,5 +1,4 @@
--- Inventory System: run once in Supabase (SQL Editor -> New query -> Run).
--- This only touches the inventory tables. The first line erases them so you can re-run safely.
+
 drop table if exists movements, products cascade;
 drop function if exists move_stock(bigint, text, int, text);
 
@@ -22,7 +21,7 @@ create table movements(
   created_at timestamptz not null default now()
 );
 
--- Stock in/out in one safe step: changes the quantity and logs the movement together.
+
 create function move_stock(p_product bigint, p_type text, p_qty int, p_note text default '')
 returns void language plpgsql as $$
 begin
@@ -40,13 +39,12 @@ end $$;
 
 grant execute on function move_stock(bigint, text, int, text) to anon, authenticated;
 
--- Open access for a class project. Add a login before using this for real.
+
 alter table products enable row level security;
 alter table movements enable row level security;
 create policy "open" on products for all using (true) with check (true);
 create policy "open" on movements for all using (true) with check (true);
 
--- Sample data
 insert into products(sku,name,category,price,quantity,reorder_level) values
 ('SKU-001','Notebook A5','Stationery',45,120,30),
 ('SKU-002','Ballpen Black (box)','Stationery',180,35,10),
